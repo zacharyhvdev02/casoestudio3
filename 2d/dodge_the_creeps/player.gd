@@ -1,9 +1,13 @@
 extends Area2D
 
 signal hit
+signal win
 
 @export var speed = 400 # How fast the player will move (pixels/sec).
 var screen_size # Size of the game window.
+var health = 3
+var score = 0
+var recoveryInmunity = false
 
 func _ready():
 	screen_size = get_viewport_rect().size
@@ -46,9 +50,7 @@ func start(pos):
 	show()
 	$CollisionShape2D.disabled = false
 
-
 func _on_body_entered(_body):
-	hide() # Player disappears after being hit.
 	hit.emit()
 	# Must be deferred as we can't change physics properties on a physics callback.
-	$CollisionShape2D.set_deferred(&"disabled", true)
+	#$CollisionShape2D.set_deferred(&"disabled", true)

@@ -2,23 +2,59 @@ extends Node
 
 @export var mob_scene: PackedScene
 var score
+var messageManager: MessageManager
 
 func game_over():
-	$ScoreTimer.stop()
-	$MobTimer.stop()
-	$HUD.show_game_over()
-	$Music.stop()
-	$DeathSound.play()
+	# if the player was just hit, ignore.
+	print("players inmunity: " + str($Player.recoveryInmunity))
+	if $Player.recoveryInmunity:
+		print("player is inmune")
+		return
 
+	if $Player.health > 1:
+		print("player was hit")
+		$Player.health -= 1
+		messageManager.notify()
+		$Player.recoveryInmunity = true
+		$NoHitTimer.start()
+	else:
+		$Player.hide() # Player disappears after being hit.
+		$ScoreTimer.stop()
+		$MobTimer.stop()
+		$HUD.show_game_over()
+		$Music.stop()
+		$DeathSound.play()
+		$Player.get_node("CollisionShape2D").set_deferred(&"disabled", true)
+
+func win():
+		$Player.hide() # Player disappears after being hit.
+		$ScoreTimer.stop()
+		$MobTimer.stop()
+		$HUD.show_win()
+		$Music.stop()
+		$WinSound.play()
+		$Player.get_node("CollisionShape2D").set_deferred(&"disabled", true)
 
 func new_game():
+	
 	get_tree().call_group(&"mobs", &"queue_free")
 	score = 0
 	$Player.start($StartPosition.position)
 	$StartTimer.start()
-	$HUD.update_score(score)
+	$Player.score = score
 	$HUD.show_message("Get Ready")
 	$Music.play()
+	$NoHitTimer.stop()
+
+	var player = $Player
+	player.health = 3
+
+	messageManager = MessageManager.new(player)
+	var healthObserver = HealthObserver.new($HUD)
+
+	messageManager.add(healthObserver)
+	messageManager.add(ScoreObserver.new($HUD))
+	messageManager.notify()
 
 
 func _on_MobTimer_timeout():
@@ -48,8 +84,13 @@ func _on_MobTimer_timeout():
 
 func _on_ScoreTimer_timeout():
 	score += 1
-	$HUD.update_score(score)
+	$Player.score += 1
+	messageManager.notify()
 
+func _on_NoHit_timeout():
+	print("removing player inmunity")
+	$Player.recoveryInmunity = false
+	$NoHitTimer.stop()
 
 func _on_StartTimer_timeout():
 	$MobTimer.start()
